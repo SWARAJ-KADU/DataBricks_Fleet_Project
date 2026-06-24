@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+.databricks/
+.vscode/
+*.egg-info/
+.env
+*.log
+
+# Generated data is large -- keep a small sample committed, not full output
+# (adjust this if you decide to commit the full 45-day dataset)
+data_generator/output/
+data_generator/stream_output/
