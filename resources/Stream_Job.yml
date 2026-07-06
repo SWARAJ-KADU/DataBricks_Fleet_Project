@@ -1,0 +1,27 @@
+resources:
+  jobs:
+    Stream_Job:
+      name: ${bundle.target}_Stream_Job
+      tasks:
+        - task_key: Bronze_Stream_Ingestion
+          spark_python_task:
+            python_file: /Workspace/Users/swarajunofficial0@gmail.com/DataBricks_Fleet_Project/notebooks/bronze/02_bronze_streaming_ingestion.py
+            parameters:
+              - --CATALOG_NAME
+              - "{{job.parameters.CATALOG_NAME}}"
+          environment_key: Default
+        - task_key: ${bundle.target}_Silver_Gold_Stream_Ingestion
+          depends_on:
+            - task_key: Bronze_Stream_Ingestion
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.streaming_silver_gold_pipeline.id}
+      queue:
+        enabled: true
+      parameters:
+        - name: CATALOG_NAME
+          default: ${var.catalog}
+      environments:
+        - environment_key: Default
+          spec:
+            environment_version: "5"
+      performance_target: PERFORMANCE_OPTIMIZED

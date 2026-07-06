@@ -1,0 +1,27 @@
+resources:
+  jobs:
+    Batch_Job:
+      name: ${bundle.target}_Batch_Job
+      tasks:
+        - task_key: Bronze_Batch_Ingestion
+          spark_python_task:
+            python_file: /Workspace/Users/swarajunofficial0@gmail.com/DataBricks_Fleet_Project/notebooks/bronze/01_bronze_batch_autoloader.py
+            parameters:
+              - --CATALOG_NAME
+              - "{{job.parameters.CATALOG_NAME}}"
+          environment_key: Default
+        - task_key: ${bundle.target}_Silver_Gold_Batch_Ingestion
+          depends_on:
+            - task_key: Bronze_Batch_Ingestion
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.batch_silver_gold_pipeline.id}
+      queue:
+        enabled: true
+      parameters:
+        - name: CATALOG_NAME
+          default: ${var.catalog}
+      environments:
+        - environment_key: Default
+          spec:
+            environment_version: "5"
+      performance_target: PERFORMANCE_OPTIMIZED

@@ -1,0 +1,19 @@
+resources:
+  pipelines:
+    batch_silver_gold_pipeline:
+      name: ${bundle.target}_Batch_Silver_Gold_pipeline
+      configuration:
+        CATALOG_NAME: ${var.catalog}
+        pipelines.numUpdateRetryAttempts: "0"
+        pipelines.maxFlowRetryAttempts: "0"
+      libraries:
+        - glob:
+            include: /Workspace/Users/swarajunofficial0@gmail.com/DataBricks_Fleet_Project/pipeline/Batch_Silver_Gold_pipeline/transformations/**
+      schema: bronze
+      continuous: false
+      development: false
+      photon: true
+      channel: CURRENT
+      catalog: ${var.catalog}
+      serverless: true
+      root_path: /Workspace/Users/swarajunofficial0@gmail.com/DataBricks_Fleet_Project/pipeline/Batch_Silver_Gold_pipeline

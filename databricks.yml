@@ -1,0 +1,56 @@
+bundle:
+  name: fleet-lakehouse-platform
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: "Unity Catalog catalog name for this environment"
+    default: fleet_dev
+
+  job_schedule_pause_status:
+    description: "Whether scheduled jobs are paused"
+    default: PAUSED
+
+  pipeline_development_mode:
+    description: "Whether the Lakeflow pipeline runs in development mode"
+    default: true
+
+targets:
+
+  dev:
+    default: true
+    mode: development
+
+    workspace:
+      host: https://dbc-211e10f4-453c.cloud.databricks.com
+
+    variables:
+      catalog: fleet_dev
+      job_schedule_pause_status: PAUSED
+      pipeline_development_mode: true
+
+  uat:
+    mode: production
+
+    workspace:
+      host: https://dbc-211e10f4-453c.cloud.databricks.com
+      root_path: /Workspace/Users/swarajunofficial0@gmail.com/.bundle/${bundle.name}/${bundle.target}
+
+    variables:
+      catalog: fleet_uat
+      job_schedule_pause_status: UNPAUSED
+      pipeline_development_mode: true
+
+  prod:
+    mode: production
+
+    workspace:
+      host: https://dbc-211e10f4-453c.cloud.databricks.com
+      root_path: /Workspace/Users/swarajunofficial0@gmail.com/.bundle/${bundle.name}/${bundle.target}
+
+    variables:
+      catalog: fleet_prod
+      job_schedule_pause_status: UNPAUSED
+      pipeline_development_mode: false

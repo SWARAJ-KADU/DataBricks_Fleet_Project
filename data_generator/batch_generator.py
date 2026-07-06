@@ -1,3 +1,4 @@
+
 """
 batch_generator.py
 
@@ -112,18 +113,67 @@ def generate_maintenance_logs(day: datetime, fleet, daily_probability=0.15) -> l
     return rows
 
 
-def generate_driver_vehicle_master_snapshot(day: datetime, fleet, change_probability=0.03) -> list:
+def generate_driver_vehicle_master_snapshot(day: datetime, fleet, change_probability=0.04) -> list:
     """
     Daily snapshot of driver/vehicle master data, the SCD2 source.
-    Most days nothing changes. Occasionally a driver gets reassigned or
-    a vehicle status changes -- this is exactly the kind of slowly-changing
-    dimension data that justifies SCD Type 2 in the Silver layer.
+
+    Most days nothing changes. Each day, each truck has an independent small
+    chance of one (and only one) of several realistic change events:
+
+      - driver_phone_update : driver's contact number changes
+                               (minor change -- still worth versioning, but
+                               low business impact)
+      - driver_reassignment : a DIFFERENT driver takes over this vehicle
+                               (the classic SCD2 case -- same vehicle_id,
+                               new driver_id/driver_name/driver_phone/license)
+      - route_reassignment  : vehicle moved to a different home_route
+                               (changes which corridor it normally runs)
+      - decommissioned      : vehicle taken out of service (is_active -> False).
+                               Once decommissioned, the vehicle stays inactive
+                               (no further changes applied to it).
+
+    Each change type is tracked in `last_change_type` purely for our own
+    debugging/visibility while building -- it is NOT meant to be fed into
+    Silver as-is (Silver's SCD2 merge should detect changes by comparing
+    snapshots, not by trusting a self-reported "what changed" label, since
+    a real source system wouldn't hand you one).
     """
     rows = []
+
     for truck in fleet:
-        # small chance of a "change event" each day (driver reassignment / status change)
-        if random.random() < change_probability:
-            truck.driver_phone = fake.phone_number()  # mutate in place -- simulates a real update
+        change_type = None
+
+        # Decommissioned vehicles are terminal -- skip further mutation.
+        if truck.is_active and random.random() < change_probability:
+            change_type = random.choices(
+                [
+                    "driver_phone_update",
+                    "driver_reassignment",
+                    "route_reassignment",
+                    "decommissioned",
+                ],
+                weights=[0.40, 0.30, 0.20, 0.10],  # phone updates most common, decommission rarest
+            )[0]
+
+            if change_type == "driver_phone_update":
+                truck.driver_phone = fake.phone_number()
+
+            elif change_type == "driver_reassignment":
+                # A genuinely different driver takes over the same vehicle --
+                # this is the change SCD2 is most commonly used to explain.
+                truck.driver_id = f"DRV{random.randint(100, 999)}"
+                truck.driver_name = fake.name_male() if random.random() > 0.1 else fake.name_female()
+                truck.driver_phone = fake.phone_number()
+                truck.driver_license_no = fake.bothify(text="MH##??#######").upper()
+
+            elif change_type == "route_reassignment":
+                from reference_data import NAMED_ROUTES
+                possible_routes = [r for r in NAMED_ROUTES if r != truck.home_route]
+                truck.home_route = random.choice(possible_routes)
+
+            elif change_type == "decommissioned":
+                truck.is_active = False
+
         rows.append({
             "snapshot_date": day.strftime("%Y-%m-%d"),
             "vehicle_id": truck.vehicle_id,
@@ -135,6 +185,7 @@ def generate_driver_vehicle_master_snapshot(day: datetime, fleet, change_probabi
             "driver_license_no": truck.driver_license_no,
             "home_route": truck.home_route,
             "is_active": truck.is_active,
+            "last_change_type": change_type,  # debugging aid only, see docstring
         })
     return rows
 
@@ -168,7 +219,8 @@ def main():
                       fieldnames=["log_id", "service_date", "vehicle_id", "issue_type", "cost_inr", "odometer_km", "service_center"])
         write_csv(output_root / "driver_vehicle_master" / f"{date_str}.csv", master_snapshot,
                   fieldnames=["snapshot_date", "vehicle_id", "license_plate", "vehicle_type", "driver_id",
-                              "driver_name", "driver_phone", "driver_license_no", "home_route", "is_active"])
+                              "driver_name", "driver_phone", "driver_license_no", "home_route", "is_active",
+                              "last_change_type"])
 
         print(f"Generated {date_str}: {len(manifests)} manifests, {len(invoices)} invoices, "
               f"{len(maintenance)} maintenance logs, {len(master_snapshot)} master records")

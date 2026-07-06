@@ -1,0 +1,21 @@
+resources:
+  pipelines:
+    streaming_silver_gold_pipeline:
+      name: ${bundle.target}_Streaming_Silver_Gold_Pipeline
+      configuration:
+        CATALOG_NAME: ${var.catalog}
+        pipelines.numUpdateRetryAttempts: "0"
+        pipelines.maxFlowRetryAttempts: "0"
+
+      libraries:
+        - glob:
+            include: /Workspace/Users/swarajunofficial0@gmail.com/DataBricks_Fleet_Project/pipeline/Streaming_Silver_Gold_Pipeline/transformations/**
+
+      catalog: ${var.catalog}
+      schema: default
+      continuous: false
+      development: false
+      photon: true
+      channel: CURRENT
+      serverless: true
+      root_path: /Workspace/Users/swarajunofficial0@gmail.com/DataBricks_Fleet_Project/pipeline/Streaming_Silver_Gold_Pipeline
